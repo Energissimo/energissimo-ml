@@ -10,8 +10,10 @@ import pandas as pd
 from sklearn import preprocessing
 
 #IMPORTATION DES DONNEES
-df_origin= pd.read_csv('consommation-electrique-par-secteurs-dactivite.csv', delimiter=';')
-df_origin2= pd.read_csv('production-electrique-par-filiere.csv', delimiter=';')
+df_origin1= pd.read_csv('consommation-electrique-par-secteurs-dactivite.csv', delimiter=';')
+#df_origin2= pd.read_csv('production-electrique-par-filiere.csv', delimiter=';')
+df_origin3= pd.read_csv('HDE_surfaces_iris.csv', delimiter='\t')
+#df_origin4= pd.read_csv('HDE_iris_nombre de personnes par iris.csv', delimiter='\t')
 
 #INDEXATION PAR LE CODE IRIS
 tags = ['Code IRIS','Nb sites secteur résidentiel',
@@ -20,16 +22,27 @@ tags = ['Code IRIS','Nb sites secteur résidentiel',
        'Conso totale Agriculture (MWh)', 'Nb sites Industrie',
        'Conso totale Industrie (MWh)', 'Nb sites Tertiaire',
        'Conso totale Tertiaire (MWh)']
-df_origin_group=df_origin.groupby('Code IRIS')
+df_origin=df_origin1
+df_origin_group=df_origin.groupby(['INSEE IRIS'])
 df_origin_group1=df_origin_group.get_group('100150000')
+
 
 #LIMITATION A LA DERNIERE ANNEE
 idx_last_yr = df_origin.groupby(['Code IRIS'], sort=False)['Année'].transform(max) == df_origin['Année']
 df_origin_last_yr=df_origin[idx_last_yr]
+#tags3=['INSEE IRIS','INSEE COMM', 'Nom commune']
 df_origin_last_yr_trunc=df_origin_last_yr[tags]
 
-df_origin_last_yr_trunc=df_origin_last_yr_trunc.set_index('Code IRIS')
+df_origin_last_yr_trunc=df_origin_last_yr_trunc.set_index(['Code IRIS'])
 
+#tags2=['INSEE IRIS','INSEE COMM', 'Nom commune', 'Code département', 'NbHbts','NbUniConso ']
+
+#commontag=list(set(tags3).intersection(tags2))
+#df_origin4short=df_origin4[tags2]
+
+#result = pd.merge(df_origin_last_yr_trunc, df_origin4short, how='outer', on=commontag)
+#df_origin4short=df_origin4short.set_index('INSEE IRIS')
+#dftest=pd.concat([df_origin_last_yr_trunc, df_origin4short], axis=1)
 #NORMALISATION A [0,1]
 df=df_origin_last_yr_trunc
 df -= df.min()
@@ -78,8 +91,7 @@ def plot_clustering(X_red, y,labels, title=None):
     plt.yticks([])
     if title is not None:
         plt.title(title, size=17)
-    plt.axis('off')
-    plt.tight_layout()
+    plt.axis('on')
     plt.show()
 plot_clustering(df_tsne.as_matrix(), hierarch_cluster.labels_, hierarch_cluster.labels_, "Ward linkage")
 
@@ -95,3 +107,18 @@ df_woNan_selec['cluster']=hierarch_cluster.labels_
 #STATISTIQUES PAR CLUSTER
 df_woNan_selec_group=df_woNan_selec.groupby('cluster')
 df_woNan_selec_stats=df_woNan_selec_group.mean()
+
+
+#from sklearn.svm import OneClassSVM
+#outlier_detect_svc=OneClassSVM()
+#outlier_detect_svc.fit(df_tsne)
+#outliers_fraction = 0.25
+#scores_pred = outlier_detect_svc.decision_function(df_tsne)
+#y_pred = outlier_detect_svc.predict(df_tsne)
+#
+##PLOT EN 2D POST-CLUSTER ALTERNATIF (SANS NUMERO DE CLUSTER)
+#from matplotlib import pyplot
+#plt.figure()
+#
+#pyplot.scatter(df_tsne.as_matrix()[:,0], df_tsne.as_matrix()[:,1], c=y_pred)
+#pyplot.show()
