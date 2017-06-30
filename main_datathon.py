@@ -10,43 +10,39 @@ import pandas as pd
 from sklearn import preprocessing
 
 #IMPORTATION DES DONNEES
-df_origin1= pd.read_csv('consommation-electrique-par-secteurs-dactivite.csv', delimiter=';')
-#df_origin2= pd.read_csv('production-electrique-par-filiere.csv', delimiter=';')
-df_origin3= pd.read_csv('HDE_surfaces_iris.csv', delimiter='\t')
-#df_origin4= pd.read_csv('HDE_iris_nombre de personnes par iris.csv', delimiter='\t')
+df_origin= pd.read_csv('all_data_v1_1_infos_iris.csv', delimiter=',')
 
 #INDEXATION PAR LE CODE IRIS
-tags = ['Code IRIS','Nb sites secteur résidentiel',
-       'Conso totale secteur résidentiel (MWh)',
-       'Conso moyenne secteur résidentiel (MWh)', 'Nb sites Agriculture',
-       'Conso totale Agriculture (MWh)', 'Nb sites Industrie',
-       'Conso totale Industrie (MWh)', 'Nb sites Tertiaire',
-       'Conso totale Tertiaire (MWh)']
-df_origin=df_origin1
-df_origin_group=df_origin.groupby(['INSEE IRIS'])
-df_origin_group1=df_origin_group.get_group('100150000')
+tags = ['id_iris','c_elec_conso_tot_res',
+       'c_elec_conso_tot_agr', 'c_elec_conso_tot_indus',
+       'c_elec_conso_tot_tert', 'p_elec_prod_pv',
+       'p_elec_prod_eol','p_elec_prod_bio','p_elec_prod_coge',
+       'socioeco_npers','socioeco_revenu_med','ensol','aire_iris']
+df_origin_group=df_origin.groupby(['id_iris'])
+#df_origin_group1=df_origin_group.get_group('100150000')
 
+tags2 = ['c_elec_conso_tot_res',
+       'c_elec_conso_tot_agr', 'c_elec_conso_tot_indus',
+       'c_elec_conso_tot_tert', 'p_elec_prod_pv',
+       'p_elec_prod_eol','p_elec_prod_bio','p_elec_prod_coge']
+#for lab in tags2:
+test=df_origin[tags2].values/df_origin[['socioeco_npers']].values
+df_origin[tags2]=pd.DataFrame(test)
 
+#test=df_origin['socioeco_npers'].values/df_origin[['aire_iris']].values
+#df_origin['socioeco_npers']=pd.DataFrame(test)
 #LIMITATION A LA DERNIERE ANNEE
-idx_last_yr = df_origin.groupby(['Code IRIS'], sort=False)['Année'].transform(max) == df_origin['Année']
-df_origin_last_yr=df_origin[idx_last_yr]
+#idx_last_yr = df_origin.groupby(['Code IRIS'], sort=False)['Année'].transform(max) == df_origin['Année']
+df_origin_last_yr=df_origin#[idx_last_yr]
 #tags3=['INSEE IRIS','INSEE COMM', 'Nom commune']
 df_origin_last_yr_trunc=df_origin_last_yr[tags]
 
-df_origin_last_yr_trunc=df_origin_last_yr_trunc.set_index(['Code IRIS'])
+#df_origin_last_yr_trunc=df_origin_last_yr_trunc.set_index(['id_iris'])
 
-#tags2=['INSEE IRIS','INSEE COMM', 'Nom commune', 'Code département', 'NbHbts','NbUniConso ']
-
-#commontag=list(set(tags3).intersection(tags2))
-#df_origin4short=df_origin4[tags2]
-
-#result = pd.merge(df_origin_last_yr_trunc, df_origin4short, how='outer', on=commontag)
-#df_origin4short=df_origin4short.set_index('INSEE IRIS')
-#dftest=pd.concat([df_origin_last_yr_trunc, df_origin4short], axis=1)
 #NORMALISATION A [0,1]
 df=df_origin_last_yr_trunc
-df -= df.min()
-df /= df.max()
+#df -= df.min()
+#df /= df.max()
 
 #REMPLISSAGE DES CASES VIDES PAR DES 0
 df_woNan=df.fillna(0)
@@ -61,19 +57,22 @@ from sklearn.manifold import TSNE
 model = TSNE(n_components=2, random_state=0)
 np.set_printoptions(suppress=True) 
 
+import time
+start_time = time.time()
 #LIMITATION DU NOMBRE DE SAMPLES
-nb_samples=1000
+nb_samples=20000
+
 import random
 random_idx=random.sample(range(len(df_woNan.index)), nb_samples)
 ndarray_tsne=model.fit_transform(df_woNan.ix[random_idx]) 
-
+#test=df_woNan.ix[random_idx]
 #PLOT EN 2D PRE-CLUSTER
 df_tsne=pd.DataFrame(ndarray_tsne,columns=['a', 'b'])
 df_tsne.plot.scatter(x='a', y='b');
 
 #CLUSTERISATION HIERARCHIQUE
 from sklearn.cluster import AgglomerativeClustering
-hierarch_cluster=AgglomerativeClustering(n_clusters=8)
+hierarch_cluster=AgglomerativeClustering(n_clusters=14)
 cluster_nmb= np.zeros(shape=(nb_samples,1))
 cluster_nmb=hierarch_cluster.fit_predict(df_tsne, y=cluster_nmb)
 
@@ -107,8 +106,13 @@ df_woNan_selec['cluster']=hierarch_cluster.labels_
 #STATISTIQUES PAR CLUSTER
 df_woNan_selec_group=df_woNan_selec.groupby('cluster')
 df_woNan_selec_stats=df_woNan_selec_group.mean()
+print("--- %s seconds ---" % (time.time() - start_time))
+#from sklearn.neighbors import NearestNeighbors
+#nbrs = NearestNeighbors(n_neighbors=4, algorithm='ball_tree').fit(df_woNan_selec[['x','y']].dropna())
+#distances, indices = nbrs.kneighbors(df_woNan_selec[['x','y']])
 
 
+#indicestest=pd.DataFrame(indices).loc[:1000].applymap(lambda x:df_positionIRIS.ix[x,['INSEE COMM']].valu)
 #from sklearn.svm import OneClassSVM
 #outlier_detect_svc=OneClassSVM()
 #outlier_detect_svc.fit(df_tsne)
